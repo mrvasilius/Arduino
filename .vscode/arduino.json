@@ -1,7 +1,7 @@
 {
     "board": "arduino:avr:nano",
-    "port": "COM4",
+    "port": "COM5",
     "output": "build",
-    "sketch": "sketch_timer\\sketch_timer.ino",
+    "sketch": "termoreg\\termoreg.ino",
     "configuration": "cpu=atmega328old"
 }

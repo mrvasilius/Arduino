@@ -10,14 +10,15 @@
                 "C:/Program Files (x86)/Arduino/hardware/tools/avr/avr/include",
                 "C:/Program Files (x86)/Arduino/hardware/tools/avr/lib/gcc/avr/5.4.0/include",
                 "C:/Program Files (x86)/Arduino/hardware/arduino/avr/variants/standard",
-                "${workspaceFolder}/libraries/RTClib"
+                "${workspaceFolder}/libraries/RTClib",
+                "${workspaceFolder}/libraries/OneWire"
             ],
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
             },
             "forcedInclude": [
-                "C:\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\cores\\arduino\\Arduino.h"
+                "C:/Program Files (x86)/Arduino/hardware/arduino/avr/cores/arduino/Arduino.h"
             ],
             "intelliSenseMode": "msvc-x64"
         }
