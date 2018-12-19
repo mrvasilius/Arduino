@@ -10,20 +10,33 @@ void dayLogic(float tempeature)
     }
 }
 
-void nightLogic(float tempeature)
+void nightLogic(float temperature)
 {
-    if (tempeature < 15 && relayStatus == 0)
+    if (temperature < 15 && relayStatus == 0)
     {
         changeStatus(ON);
     }
-    if (tempeature > 25 && relayStatus == 1)
+    if (temperature > 25 && relayStatus == 1)
     {
         changeStatus(OFF);
+    }
+}
+
+void reserveLogic(float temperature)
+{
+    if (temperature < 3 && relayStatus == 1)
+    {
+        digitalWrite(RESERVE_RELAY_BUS, ON);
+    }
+
+    if (temperature > 10)
+    {
+        digitalWrite(RESERVE_RELAY_BUS, OFF);
     }
 }
 
 void changeStatus(bool status)
 {
     relayStatus = status;
-    digitalWrite(RELAY_BUS, status);
+    digitalWrite(PRIME_RELAY_BUS, status);
 }

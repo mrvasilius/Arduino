@@ -4,7 +4,8 @@
 #include <RTClib.h>
 
 #define ONE_WIRE_BUS 2
-#define RELAY_BUS 3
+#define PRIME_RELAY_BUS 12
+#define RESERVE_RELAY_BUS 13
 #define ON 1
 #define OFF 0
 
@@ -21,7 +22,8 @@ bool relayStatus = 0;
 
 void setup()
 {
-    pinMode(RELAY_BUS, OUTPUT);
+    pinMode(PRIME_RELAY_BUS, OUTPUT);
+    pinMode(RESERVE_RELAY_BUS, OUTPUT);
 
     // display
     Wire.begin();
@@ -44,8 +46,9 @@ void setup()
 void loop()
 {
     ds.requestTemperatures();
-    float tempeature = ds.getTempC(sens);
-    showTemp(tempeature);
-    isDay() ? dayLogic(tempeature) : nightLogic(tempeature);
+    float temperature = ds.getTempC(sens);
+    showTemp(temperature);
+    isDay() ? dayLogic(temperature) : nightLogic(temperature);
+    reserveLogic(temperature);
     delay(60000);
 }
