@@ -47,14 +47,14 @@ For Bluetooth Low Energy communications, the library has been tested with the Ad
 
 To use the library with Arduino boards you will need the latest version of the Arduino IDE:
 
-- [Arduino IDE 1.6.8](http://arduino.cc/en/main/software)
+- [Arduino IDE 1.8.5](http://arduino.cc/en/main/software)
 
 ### For WiFi using the ESP8266 chip
 
 To use the library with the ESP8266 WiFi chip you will need to install the required module from the Boards Manager of the Arduino IDE. These are the steps to install the ESP8266 package inside the Arduino IDE:
 
 1. Start the Arduino IDE and open the Preferences window
-2. Enter `http://arduino.esp8266.com/package_esp8266com_index.json` into the Additional Board Manager URLs field. You can add multiple URLs, separating them with commas.
+2. Enter `http://arduino.esp8266.com/stable/package_esp8266com_index.json` into the Additional Board Manager URLs field. You can add multiple URLs, separating them with commas.
 3. Open the Boards Manager from Tools > Board menu and install the esp8266 package (and after that don't forget to select your ESP8266 board from Tools > Board menu).
 
 ### For WiFi using the ESP32 chip
@@ -188,6 +188,14 @@ To access a variable in your sketch, you have to declare it first, and then call
 You can also define your own functions in your sketch that can be called using the REST API. To access a function defined in your sketch, you have to declare it first, and then call it from with a REST call. Note that all functions needs to take a String as the unique argument (for parameters to be passed to the function) and return an integer. For example, if your aREST instance is called "rest" and the function "ledControl":
   * `rest.function("led",ledControl);` declares the function in the Arduino sketch
   * `/led?params=0` executes the function
+
+### Log data to the cloud
+
+You can also directly tell your board to log data on our cloud server, to be stored there & retrieved later or displayed on the [aREST cloud dashboard](https://dashboard.arest.io/). This is useful when you want for example to record the data coming from a sensor at regular intervals. The data is then stored along with the current date, the ID of the device sending the data, and also an event name that is used to identifiy the data. This can be done via the following commands:
+  * `rest.publish(client, "temperature", data);` logs the value of `data` with the event name `temperature`
+  * `https://cloud.arest.io/47fd9g/events` retrieves the last events logged by the device `47fd9g`
+  * You can also use the [aREST cloud dashboard](https://dashboard.arest.io/) to then display or plot this data in real-time on your dashboards
+  * Note that for devices not protected by an API key, the server will only store the last 10 measurements
 
 ### Get data about the board
 

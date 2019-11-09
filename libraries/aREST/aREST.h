@@ -7,9 +7,14 @@
   This work is licensed under a Creative Commons Attribution-ShareAlike 4.0 International License:
   http://creativecommons.org/licenses/by-sa/4.0/
 
-  Version 2.7.1
+  Version 2.8.0
   Changelog:
 
+  Version 2.8.0: Compatibility with the new aREST cloud server
+  Version 2.7.5: Added rate-limitation for publish()
+  Version 2.7.4: Fix for the Arduino Ethernet 2.0 library
+  Version 2.7.3: Added support to set your own ID when using API key
+  Version 2.7.2: Bug fixes for aREST.io
   Version 2.7.1: Additional fixes & optimisations by @eykamp 
   Version 2.7.0: Several fixes & optimisations by @eykamp 
   Version 2.6.0: Added support for new aREST cloud app
@@ -115,6 +120,19 @@
 #define DEBUG_MODE 0
 #endif
 
+
+// Use AREST_PARAMS_MODE to control how parameters are parsed when using the function() method.
+// Use 0 for standard operation, where everything before the first "=" is stripped before passing the parameter string to the function.
+// Useful for simple functions, where only the value is important
+//    function?params=hello    ==> hello gets passed to the function
+//
+// Use 1 to pass the entire parameter string to the function, which will be responsible for parsing the parameter string
+// Useful for more complex situations, where the key name as well as its value is important, or there are mutliple key-value pairs
+//    function?params=hello    ==> params=hello gets passed to the function
+#ifndef AREST_PARAMS_MODE
+#define AREST_PARAMS_MODE 0
+#endif
+
 // Use light answer mode
 #ifndef LIGHTWEIGHT
 #define LIGHTWEIGHT 0
@@ -182,11 +200,7 @@ aREST() {
 
 aREST(char* rest_remote_server, int rest_port) {
 
-  command = 'u';
-  pin_selected = false;
-
-  status_led_pin = 255;
-  state = 'u';
+  initialize();
 
   remote_server = rest_remote_server;
   port = rest_port;
@@ -271,47 +285,118 @@ void subscribe(const String& device, const String& eventName) {
 template <typename T>
 void publish(PubSubClient& client, const String& eventName, T data) {
 
-  // Get event data
-  if (DEBUG_MODE) {
-    Serial.print("Publishing event " + eventName + " with data: ");
-    Serial.println(data);
+  uint32_t currentMillis = millis();
+
+  if (currentMillis - previousMillis >= interval) {
+
+    previousMillis = currentMillis;
+
+    // Get event data
+    if (DEBUG_MODE) {
+      Serial.print("Publishing event " + eventName + " with data: ");
+      Serial.println(data);
+    }
+
+    // Build message
+    String message = "{\"client_id\": \"" + id + "\", \"event_name\": \"" + eventName + "\", \"data\": \"" + String(data) + "\"}";
+
+    if (DEBUG_MODE) {
+      Serial.print("Sending message via MQTT: ");
+      Serial.println(message);
+    }
+
+    // Convert
+    char charBuf[100];
+    message.toCharArray(charBuf, 100);
+
+    // Publish
+    client.publish(publish_topic, charBuf);
+
   }
-
-  // Build message
-  String message = "{\"client_id\": \"" + id + "\", \"event_name\": \"" + eventName + "\", \"data\": \"" + String(data) + "\"}";
-
-  if (DEBUG_MODE) {
-    Serial.print("Sending message via MQTT: ");
-    Serial.println(message);
-  }
-
-  // Convert
-  char charBuf[100];
-  message.toCharArray(charBuf, 100);
-
-  // Publish
-  client.publish(publish_topic, charBuf);
 
 }
 
-void setKey(char* proKey, PubSubClient& client) {
+template <typename T>
+void publish(PubSubClient& client, const String& eventName, T data, uint32_t customInterval) {
 
-  // Assign MQTT server
-  // mqtt_server = "104.131.78.157";
-  // client.setServer(mqtt_server, 1883);
+  uint32_t currentMillis = millis();
 
-  // Generate MQTT random ID
-  id = gen_random(6);
+  if (currentMillis - previousMillis >= customInterval) {
+
+    previousMillis = currentMillis;
+
+    // Get event data
+    if (DEBUG_MODE) {
+      Serial.print("Publishing event " + eventName + " with data: ");
+      Serial.println(data);
+    }
+
+    // Build message
+    String message = "{\"client_id\": \"" + id + "\", \"event_name\": \"" + eventName + "\", \"data\": \"" + String(data) + "\"}";
+
+    if (DEBUG_MODE) {
+      Serial.print("Sending message via MQTT: ");
+      Serial.println(message);
+    }
+
+    // Convert
+    char charBuf[100];
+    message.toCharArray(charBuf, 100);
+
+    // Publish
+    client.publish(publish_topic, charBuf);
+
+  }
+
+}
+
+void setKey(char* api_key) {
+
+  // Set
+  proKey = String(api_key);
+
+  if (id.length() == 0) {
+
+    // Generate MQTT random ID
+    id = gen_random(6);
+
+  }
 
   // Build topics IDs
-  String inTopic = id + String(proKey) + String("_in");
-  String outTopic = id + String(proKey) + String("_out");
+  String inTopic = id + String(api_key) + String("_in");
+  String outTopic = id + String(api_key) + String("_out");
 
   strcpy(in_topic, inTopic.c_str());
   strcpy(out_topic, outTopic.c_str());
 
   // Build client ID
-  String client_id = id + String(proKey);
+  client_id = id + String(api_key);
+
+}
+
+void setKey(char* api_key, PubSubClient& client) {
+
+  // Set
+  proKey = String(api_key);
+
+  if (id.length() == 0) {
+
+    // Generate MQTT random ID
+    id = gen_random(6);
+
+  }
+
+  // Build topics IDs
+  String inTopic = id + String(api_key) + String("_in");
+  String outTopic = id + String(api_key) + String("_out");
+
+  strcpy(in_topic, inTopic.c_str());
+  strcpy(out_topic, outTopic.c_str());
+
+  // Build client ID
+  client_id = id + String(api_key);
+  client_id = id + String(proKey);
+
 }
 
 #endif
@@ -478,7 +563,7 @@ void handle(Adafruit_BLE_UART& serial) {
 // }
 
 // Handle request for the Arduino Ethernet shield
-#elif defined(ethernet_h)
+#elif defined(ethernet_h_)
 void handle(EthernetClient& client){
 
   if (client.available()) {
@@ -1102,14 +1187,22 @@ void process(char c) {
         // We're expecting a string of the form <functionName>?xxxxx=<arguments>, where xxxxx can be almost anything as long as it's followed by an '='
         // Get command -- Anything following the first '=' in answer will be put in the arguments string.
         arguments = "";
-        uint8_t header_length = strlen(functions_names[i]);
+        uint16_t header_length = strlen(functions_names[i]);
         if (answer.substring(header_length, header_length + 1) == "?") {
-          uint8_t footer_start = answer.length();
+          uint16_t footer_start = answer.length();
           if (answer.endsWith(" HTTP/"))
             footer_start -= 6; // length of " HTTP/"
-          int eq_position = answer.indexOf('=', header_length); // Replacing 'magic number' 8 for fixed location of '='
-          if (eq_position != -1)
-            arguments = answer.substring(eq_position + 1, footer_start);
+
+          // Standard operation --> strip off anything preceeding the first "=", pass the rest to the function
+          if(AREST_PARAMS_MODE == 0) {
+            uint16_t eq_position = answer.indexOf('=', header_length); // Replacing 'magic number' 8 for fixed location of '='
+            if (eq_position != -1)
+              arguments = answer.substring(eq_position + 1, footer_start);
+          } 
+          // All params mode --> pass all parameters, if any, to the function.  Function will be resonsible for parsing
+          else if(AREST_PARAMS_MODE == 1) {
+            arguments = answer.substring(header_length + 1, footer_start);
+          }
         }
 
         break; // We found what we're looking for
@@ -1117,7 +1210,7 @@ void process(char c) {
     }
 
     // If the command is "id", return device id, name and status
-    if ((answer[0] == 'i' && answer[1] == 'd')) {
+    if (command == 'u' && (answer[0] == 'i' && answer[1] == 'd')) {
 
       // Set state
       command = 'i';
@@ -1127,7 +1220,7 @@ void process(char c) {
       state = 'x';
     }
 
-    if (answer[0] == ' ') {
+    if (command == 'u' && answer[0] == ' ') {
 
       // Set state
       command = 'r';
@@ -1383,6 +1476,7 @@ bool send_command(bool headers, bool decodeArgs) {
     } else {
       addToBufferF(F("{"));
       addVariableToBuffer(value);
+      addToBufferF(F(", "));
     }
   }
 
@@ -1401,7 +1495,7 @@ bool send_command(bool headers, bool decodeArgs) {
       addToBuffer(result, true);
       addToBufferF(F(", "));
       // addToBufferF(F(", \"message\": \""));
-      // addToBufferF(functions_names[value]);
+      // addStringToBuffer(functions_names[value]);
       // addToBufferF(F(" executed\", "));
     }
   }
@@ -1447,7 +1541,7 @@ bool send_command(bool headers, bool decodeArgs) {
 
 virtual void root_answer() {
 
-  #if defined(ADAFRUIT_CC3000_H) || defined(ESP8266) || defined(ethernet_h) || defined(WiFi_h)
+  #if defined(ADAFRUIT_CC3000_H) || defined(ESP8266) || defined(ethernet_h_) || defined(WiFi_h)
     #if !defined(PubSubClient_h)
       if (command != 'u') {
         send_http_headers();
@@ -1462,9 +1556,7 @@ virtual void root_answer() {
     addToBufferF(F("{\"variables\": {"));
 
     for (uint8_t i = 0; i < variables_index; i++){
-      addStringToBuffer(variable_names[i], true);
-      addToBufferF(F(": "));
-      variables[i]->addToBuffer(this);
+      addVariableToBuffer(i);
 
       if (i < variables_index - 1) {
         addToBufferF(F(", "));
@@ -1497,31 +1589,34 @@ void set_id(const String& device_id) {
 
   #if defined(PubSubClient_h)
 
-  // Generate MQTT random ID
-  String randomId = gen_random(6);
+  if (proKey.length() == 0) {
 
-  // Build topics IDs
-  String inTopic = randomId + id + String("_in");
-  String outTopic = randomId + id + String("_out");
+      // Generate MQTT random ID
+      String randomId = gen_random(6);
 
-  strcpy(in_topic, inTopic.c_str());
-  strcpy(out_topic, outTopic.c_str());
+      // Build topics IDs
+      String inTopic = randomId + id + String("_in");
+      String outTopic = randomId + id + String("_out");
 
-  // inTopic.toCharArray(in_topic, inTopic.length());
-  // outTopic.toCharArray(out_topic, outTopic.length());
+      strcpy(in_topic, inTopic.c_str());
+      strcpy(out_topic, outTopic.c_str());
 
-  // Build client ID
-  client_id = randomId + id;
+      // Build client ID
+      client_id = randomId + id;
 
-  if (DEBUG_MODE) {
-    Serial.print("Input MQTT topic: ");
-    Serial.println(in_topic);
+  }
+  else {
 
-    Serial.print("Output MQTT topic: ");
-    Serial.println(out_topic);
+      // Build topics IDs
+      String inTopic = id + String(proKey) + String("_in");
+      String outTopic = id + String(proKey) + String("_out");
 
-    Serial.print("Client ID: ");
-    Serial.println(client_id);
+      strcpy(in_topic, inTopic.c_str());
+      strcpy(out_topic, outTopic.c_str());
+
+      // Build client ID
+      client_id = id + String(proKey);
+      
   }
 
   #endif
@@ -1825,7 +1920,6 @@ void addVariableToBuffer(uint8_t index) {
   addStringToBuffer(variable_names[index], true);
   addToBufferF(F(": "));
   variables[index]->addToBuffer(this);
-  addToBufferF(F(", "));
 }
 
 
@@ -1877,6 +1971,7 @@ private:
 
   char name[NAME_SIZE];
   String id;
+  String proKey;
   String arguments;
 
   // Output uffer
@@ -1885,6 +1980,10 @@ private:
 
   // Status LED
   uint8_t status_led_pin;
+
+  // Interval
+  uint32_t previousMillis;
+  uint32_t interval = 1000;
 
   // Int variables arrays
   uint8_t variables_index;
@@ -1905,7 +2004,7 @@ private:
   char * subscriptions_names[NUMBER_SUBSCRIPTIONS];
 
   // aREST.io server
-  char* mqtt_server = "104.131.78.157";
+  char* mqtt_server = "104.248.48.85";
   bool private_mqtt_server;
 
   #endif
@@ -1953,7 +2052,5 @@ template <>
 void aREST::addToBuffer(char toAdd[], bool quotable) {
   addStringToBuffer(toAdd, quotable);           // Strings must be quoted
 }
-
-
 
 #endif

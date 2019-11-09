@@ -1,0 +1,6 @@
+{
+    "sketch": "ds1307.pde",
+    "port": "COM3",
+    "board": "arduino:avr:pro",
+    "configuration": "cpu=16MHzatmega328"
+}
