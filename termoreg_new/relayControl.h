@@ -42,7 +42,7 @@ void RelayControl::setRelay(uint8_t hour)
     }
     if (hour >= 7 && hour < 23)
     {
-        checkTemp(-1, 1);
+        checkTemp(0, 0);
         return;
     }
     checkTemp(0, 2);
@@ -52,23 +52,23 @@ void RelayControl::checkTemp(int bottom, int top)
 {
     if (*_temperature < *_theTemp + bottom && _relayStatus == RELAY_OFF)
     {
-        _relayStatus = RELAY_ON;
-       setRelayOn();
+        setRelayOn();
     }
     if (*_temperature > *_theTemp + top && _relayStatus == RELAY_ON)
     {
-        _relayStatus = RELAY_OFF;
         setRelayOff();
     }
 }
 
 void RelayControl::setRelayOn()
 {
+    _relayStatus = RELAY_ON;
     digitalWrite(RELAY_BUS, RELAY_ON);
 }
 
 void RelayControl::setRelayOff()
 {
+    _relayStatus = RELAY_OFF;
     digitalWrite(RELAY_BUS, RELAY_OFF);
 }
 

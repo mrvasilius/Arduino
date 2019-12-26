@@ -11,7 +11,7 @@
 class DisplayShow : public GyverTM1637
 {
 public:
-    DisplayShow(uint8_t clk, uint8_t dio);
+    DisplayShow();
     void init(int *theTemp, float *temperature);
     void showTemp();
     void showEdit();
@@ -41,7 +41,7 @@ private:
 
 extern DisplayShow Display;
 
-DisplayShow::DisplayShow(uint8_t clk, uint8_t dio) : GyverTM1637(clk, dio) {}
+DisplayShow::DisplayShow() : GyverTM1637(DISP_CLK, DISP_DIO) {}
 
 void DisplayShow::init(int *theTemp, float *temperature)
 {
@@ -77,4 +77,4 @@ void DisplayShow::showOff()
     displayByte(_O, _f, _f, _empty);
 }
 
-DisplayShow Display = DisplayShow(DISP_CLK, DISP_DIO);
+DisplayShow Display = DisplayShow();

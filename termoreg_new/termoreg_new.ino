@@ -4,8 +4,9 @@
 #define REQUIRESALARMS false
 #include <DallasTemperature.h>
 
-#include "GyverTimer.h"
 #include <iarduino_RTC.h>
+
+#include "GyverTimer.h"
 #include "GyverEncoder.h"
 
 #define RELAY_BUS 12
@@ -27,34 +28,44 @@
 #define ENC_DT 3
 #define ENC_SW 4
 
+#define TIME_RST 5
+#define TIME_CLK 7
+#define TIME_DAT 6
+
 #define ONE_WIRE_BUS 10
 
 // timers
 GTimer_ms dispTimer(100);
 GTimer_ms tempTimer(60000);
 GTimer_ms editTimer(10000);
-GTimer_ms blinkTimer(2000);
+GTimer_ms blinkTimer(1000);
 
 // temperature
-const byte sens[8] = {0x28, 0xFF, 0x7F, 0x27, 0x53, 0x17, 0x04, 0xC0};
+const byte sens[8] = {0x28, 0xFF, 0x7F, 0x27, 0x53, 0x17, 0x04, 0xC0}; // На столе
+//const byte sens[8] = {0x28, 0xAA, 0x40, 0x6C, 0x40, 0x14, 0x01, 0x5E}; // РЕСАНТА 1500 - ванная
 OneWire sensDs(ONE_WIRE_BUS);
 DallasTemperature ds(&sensDs);
 float temperature = 0;
 int theTemp = 20;
 
+// time
+iarduino_RTC time(RTC_DS1302, TIME_RST, TIME_CLK, TIME_DAT);
+
 // encoder
 Encoder enc1(ENC_CLK, ENC_DT, ENC_SW);
 bool editMode = false;
+bool timeMode = false;
 byte power = POWER_AUTO;
 
 boolean isShowTemp = true;
+boolean isLight = true;
 
-// time
-iarduino_RTC time(RTC_DS1302, 5, 7, 6);
+extern int __bss_end;
+extern void *__brkval;
 
 void setup()
 {
-    //Serial.begin(9600);
+    // Serial.begin(9600);
 
     Display.init(&theTemp, &temperature);
 
@@ -69,8 +80,10 @@ void setup()
     // timers
     editTimer.setMode(MANUAL);
 
-    Wire.begin();
     time.begin();
+    time.gettime();
+
+    Wire.begin();
     ds.begin();
     ds.requestTemperatures();
     delay(1000);
@@ -80,70 +93,120 @@ void setup()
 
 void loop()
 {
-    if (enc1.isTurn())
-    {
-        editMode = true;
-        editTimer.start();
-        if (enc1.isRight())
-        {
-            Tuning.raiseTemp();
-        }
 
-        if (enc1.isLeft())
-        {
-            Tuning.reduceTemp();
-        }
-        editTimer.reset();
-    }
-    if (enc1.isPress())
+    if (enc1.isHolded())
     {
-        power = power == 2 ? 0 : power + 1;
-        if (power == POWER_ON)
-        {
-            RC.setRelayOn();
-        }
-        if (power == POWER_OFF)
-        {
-            RC.setRelayOff();
-        }
-        isShowTemp = false;
-        blinkTimer.reset();
-    }
-    if (editTimer.isReady())
-    {
+        // Serial.println("Holded");
         editMode = false;
-        time.gettime();
-        uint8_t hour = time.Hours;
-        RC.setRelay(hour);
-        editTimer.reset();
-        editTimer.stop();
+        Display.point(false);
+        timeMode = !timeMode;
     }
 
-    if (tempTimer.isReady())
+    if (tempTimer.isReady() && power == POWER_AUTO)
     {
         temperature = ds.getTempC(sens);
         time.gettime();
-        uint8_t hour = time.Hours;
-        RC.setRelay(hour);
+        RC.setRelay(time.Hours);
         ds.requestTemperatures();
     }
-    if (dispTimer.isReady())
+
+    if (timeMode)
     {
-        if (power == POWER_AUTO)
+        // if (enc1.isClick())
+        // {
+        //     editMode = true;
+
+        // }
+        // // add settings
+        // if (enc1.isTurn())
+        // {
+        //     if (enc1.isRight())
+        //     {
+        //     }
+
+        //     if (enc1.isLeft())
+        //     {
+        //     }
+        // }
+        if (blinkTimer.isReady())
         {
-            editMode ? Display.showEdit() : Display.showTemp();
+            isLight = !isLight;
         }
-        if (power == POWER_ON)
+        if (dispTimer.isReady())
         {
-            isShowTemp ? Display.showTemp() : Display.showOn();
-        }
-        if (power == POWER_OFF)
-        {
-            isShowTemp ? Display.showTemp() : Display.showOff();
+            Display.point(isLight);
+            Display.displayClock(time.Hours, time.minutes);
         }
     }
-    if (blinkTimer.isReady())
+    else
     {
-        isShowTemp = !isShowTemp;
+        if (enc1.isTurn())
+        {
+            editMode = true;
+            editTimer.start();
+            if (enc1.isRight())
+            {
+                Tuning.raiseTemp();
+            }
+
+            if (enc1.isLeft())
+            {
+                Tuning.reduceTemp();
+            }
+            editTimer.reset();
+        }
+        if (enc1.isClick())
+        {
+            power = power + 1 > 2 ? 0 : power + 1;
+            if (power == POWER_OFF)
+            {
+                RC.setRelayOff();
+            }
+            if (power == POWER_ON)
+            {
+                RC.setRelayOn();
+            }
+            if (power == POWER_AUTO)
+            {
+                RC.setRelay(time.Hours);
+            }
+            isShowTemp = false;
+            blinkTimer.reset();
+        }
+        if (editTimer.isReady())
+        {
+            editMode = false;
+            RC.setRelay(time.Hours);
+            editTimer.reset();
+            editTimer.stop();
+        }
+        if (dispTimer.isReady())
+        {
+            if (power == POWER_AUTO)
+            {
+                editMode ? Display.showEdit() : Display.showTemp();
+            }
+            if (power == POWER_ON)
+            {
+                isShowTemp ? Display.showTemp() : Display.showOn();
+            }
+            if (power == POWER_OFF)
+            {
+                isShowTemp ? Display.showTemp() : Display.showOff();
+            }
+        }
+        if (blinkTimer.isReady())
+        {
+            isShowTemp = !isShowTemp;
+        }
     }
+}
+int memoryFree()
+{
+    int freeValue;
+    if ((int)__brkval == 0)
+        freeValue = ((int)&freeValue) - ((int)&__bss_end);
+    else
+        freeValue = ((int)&freeValue) - ((int)__brkval);
+    return freeValue;
 }
