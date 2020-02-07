@@ -1,2 +1,5 @@
 /build/*
-/.vscode/arduino.json
+/.vscode/*
+
+#Ignore thumbnails created by Windows
+Thumbs.db

@@ -1,7 +1,0 @@
-{
-    "board": "arduino:avr:pro",
-    "port": "COM4",
-    "output": "build",
-    "sketch": "termoreg_new/termoreg_new.ino",
-    "configuration": "cpu=16MHzatmega328"
-}

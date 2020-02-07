@@ -41,8 +41,9 @@ GTimer_ms editTimer(10000);
 GTimer_ms blinkTimer(1000);
 
 // temperature
-const byte sens[8] = {0x28, 0xFF, 0x7F, 0x27, 0x53, 0x17, 0x04, 0xC0}; // На столе
+//const byte sens[8] = {0x28, 0xFF, 0x7F, 0x27, 0x53, 0x17, 0x04, 0xC0}; // На столе
 //const byte sens[8] = {0x28, 0xAA, 0x40, 0x6C, 0x40, 0x14, 0x01, 0x5E}; // РЕСАНТА 1500 - ванная
+const byte sens[8] = {0x28, 0xAA, 0xB4, 0x2D, 0x40, 0x14, 0x01, 0x88}; // SCOOLE 1500 х2 - гостинная
 OneWire sensDs(ONE_WIRE_BUS);
 DallasTemperature ds(&sensDs);
 float temperature = 0;
@@ -102,11 +103,14 @@ void loop()
         timeMode = !timeMode;
     }
 
-    if (tempTimer.isReady() && power == POWER_AUTO)
+    if (tempTimer.isReady())
     {
         temperature = ds.getTempC(sens);
-        time.gettime();
-        RC.setRelay(time.Hours);
+        if (power == POWER_AUTO)
+        {
+            time.gettime();
+            RC.setRelay(time.Hours);
+        }
         ds.requestTemperatures();
     }
 

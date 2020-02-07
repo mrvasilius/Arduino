@@ -40,7 +40,12 @@ void RelayControl::setRelay(uint8_t hour)
         checkTemp(2, 5);
         return;
     }
-    if (hour >= 7 && hour < 23)
+    if (hour >= 7 && hour <= 23)
+    {
+        checkTemp(0, 0);
+        return;
+    }
+    if (hour == 0)
     {
         checkTemp(0, 0);
         return;
